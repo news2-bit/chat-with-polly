@@ -343,7 +343,7 @@
 <script>
   const API_URL = 'https://gen.pollinations.ai/v1/chat/completions';
 
-  let history = [];
+  let chatHistory = [];
   let apiKey = null;
 
   const messagesEl = document.getElementById('messages');
@@ -364,7 +364,7 @@
       apiKey = keyFromHash;
       sessionStorage.setItem('polly_api_key', apiKey);
       // Clean the key out of the URL — don't leave it visible in the address bar
-      history.replaceState(null, '', location.pathname + location.search);
+      window.history.replaceState(null, '', location.pathname + location.search);
     } else {
       apiKey = sessionStorage.getItem('polly_api_key');
     }
@@ -418,7 +418,7 @@
   sendBtn.addEventListener('click', sendMessage);
 
   document.getElementById('clear-btn').addEventListener('click', () => {
-    history = [];
+    chatHistory = [];
     messagesEl.innerHTML = '';
     messagesEl.appendChild(emptyState);
     emptyState.style.display = '';
@@ -485,8 +485,8 @@
     inputEl.style.height = 'auto';
     sendBtn.disabled = true;
 
-    // Add user message to history and UI
-    history.push({ role: 'user', content: text });
+    // Add user message to chatHistory and UI
+    chatHistory.push({ role: 'user', content: text });
     appendMessage('user', text);
 
     const typingEl = appendTyping();
@@ -500,7 +500,7 @@
         headers,
         body: JSON.stringify({
           model: modelSelect.value,
-          messages: history,   // Full history = coherent conversation
+          messages: chatHistory,
         }),
       });
 
@@ -517,14 +517,14 @@
 
       if (!reply) throw new Error('Empty response from API');
 
-      // Add assistant reply to history so next turn stays coherent
-      history.push({ role: 'assistant', content: reply });
+      // Add assistant reply to chatHistory so next turn stays coherent
+      chatHistory.push({ role: 'assistant', content: reply });
       appendMessage('assistant', reply);
 
     } catch (err) {
       typingEl.remove();
-      // Roll back the user message from history on failure
-      history.pop();
+      // Roll back the user message from chatHistory on failure
+      chatHistory.pop();
       showError(`Error: ${err.message}`);
     } finally {
       sendBtn.disabled = false;
