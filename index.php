@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Polly — Pollinations Chat</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap');
+
+  :root {
+    --bg: #0d0f0e;
+    --surface: #141714;
+    --border: #2a2e2b;
+    --accent: #b4ff6e;
+    --accent-dim: #7ab84a;
+    --text: #e8ede9;
+    --text-muted: #6b7a6c;
+    --user-bubble: #1c2b1e;
+    --assistant-bubble: #161916;
+    --radius: 14px;
+    --font-ui: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .logo-dot {
+    width: 28px; height: 28px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+
+  .header-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .auth-btn {
+    background: var(--accent);
+    color: #0d0f0e;
+    border: none;
+    font-family: var(--font-ui);
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    white-space: nowrap;
+  }
+  .auth-btn:hover { background: #cbff94; transform: scale(1.03); }
+
+  .auth-status {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .auth-status .dot {
+    width: 7px; height: 7px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .disconnect-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: var(--font-ui);
+    font-size: 0.7rem;
+    padding: 4px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .disconnect-btn:hover { border-color: #ff6e6e; color: #ff6e6e; }
+
+  .model-select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    padding: 6px 10px;
+    border-radius: 8px;
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .model-select:focus { border-color: var(--accent); }
+
+  .clear-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-family: var(--font-ui);
+    font-size: 0.72rem;
+    padding: 6px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .clear-btn:hover { border-color: #ff6e6e; color: #ff6e6e; }
+
+  /* ── Messages ── */
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    scroll-behavior: smooth;
+  }
+
+  #messages::-webkit-scrollbar { width: 4px; }
+  #messages::-webkit-scrollbar-track { background: transparent; }
+  #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .msg {
+    display: flex;
+    gap: 12px;
+    max-width: 760px;
+    animation: fadeUp 0.25s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg.user { flex-direction: row-reverse; align-self: flex-end; }
+  .msg.assistant { align-self: flex-start; }
+
+  .avatar {
+    width: 32px; height: 32px;
+    border-radius: 10px;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .user .avatar { background: var(--accent); color: #0d0f0e; }
+  .assistant .avatar { background: var(--surface); border: 1px solid var(--border); color: var(--accent); }
+
+  .bubble {
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    line-height: 1.65;
+    max-width: 600px;
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
+  .user .bubble {
+    background: var(--user-bubble);
+    border: 1px solid #2e3f30;
+    border-bottom-right-radius: 4px;
+  }
+  .assistant .bubble {
+    background: var(--assistant-bubble);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 0.84rem;
+  }
+
+  .typing-indicator {
+    display: flex;
+    gap: 5px;
+    padding: 4px 0;
+  }
+  .typing-indicator span {
+    width: 7px; height: 7px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: blink 1.2s infinite;
+    opacity: 0.4;
+  }
+  .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes blink {
+    0%, 80%, 100% { opacity: 0.4; }
+    40% { opacity: 1; }
+  }
+
+  .empty-state {
+    margin: auto;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+  .empty-state .big { font-size: 2.5rem; margin-bottom: 8px; }
+  .empty-state p { line-height: 1.6; }
+
+  /* ── Input bar ── */
+  footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  #user-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 0.9rem;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    resize: none;
+    outline: none;
+    min-height: 48px;
+    max-height: 160px;
+    line-height: 1.5;
+    transition: border-color 0.2s;
+    overflow-y: auto;
+  }
+  #user-input:focus { border-color: var(--accent); }
+  #user-input::placeholder { color: var(--text-muted); }
+
+  #send-btn {
+    background: var(--accent);
+    color: #0d0f0e;
+    border: none;
+    width: 48px; height: 48px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.1s, background 0.15s;
+    flex-shrink: 0;
+  }
+  #send-btn:hover { background: #cbff94; transform: scale(1.05); }
+  #send-btn:active { transform: scale(0.97); }
+  #send-btn:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; transform: none; }
+
+  .error-toast {
+    background: #2e1515;
+    border: 1px solid #ff6e6e;
+    color: #ff9f9f;
+    font-size: 0.78rem;
+    font-family: var(--font-mono);
+    padding: 8px 14px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    display: none;
+  }
+  .error-toast.visible { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot">🌸</div>
+    Polly
+  </div>
+  <div class="header-controls">
+    <div id="auth-area">
+      <!-- Filled by JS based on auth state -->
+    </div>
+    <select class="model-select" id="model-select">
+      <option value="openai">openai</option>
+      <option value="mistral">mistral</option>
+      <option value="llama">llama</option>
+      <option value="gemini">gemini</option>
+    </select>
+    <button class="clear-btn" id="clear-btn">Clear</button>
+  </div>
+</header>
+
+<div id="messages">
+  <div class="empty-state" id="empty-state">
+    <div class="big">🌼</div>
+    <p>Start a conversation with Polly.<br/>Powered by Pollinations AI.</p>
+  </div>
+</div>
+
+<footer>
+  <div class="error-toast" id="error-toast"></div>
+  <div class="input-row">
+    <textarea id="user-input" placeholder="Say something..." rows="1"></textarea>
+    <button id="send-btn" aria-label="Send">↑</button>
+  </div>
+</footer>
+
+<script>
+  const API_URL = 'https://gen.pollinations.ai/v1/chat/completions';
+
+  let history = [];
+  let apiKey = null;
+
+  const messagesEl = document.getElementById('messages');
+  const emptyState = document.getElementById('empty-state');
+  const inputEl = document.getElementById('user-input');
+  const sendBtn = document.getElementById('send-btn');
+  const errorToast = document.getElementById('error-toast');
+  const modelSelect = document.getElementById('model-select');
+  const authArea = document.getElementById('auth-area');
+
+  // ── Auth: check URL hash first, then sessionStorage ──
+  function initAuth() {
+    // After redirect, Pollinations puts the key in the hash fragment
+    const hash = new URLSearchParams(location.hash.slice(1));
+    const keyFromHash = hash.get('api_key');
+
+    if (keyFromHash) {
+      apiKey = keyFromHash;
+      sessionStorage.setItem('polly_api_key', apiKey);
+      // Clean the key out of the URL — don't leave it visible in the address bar
+      history.replaceState(null, '', location.pathname + location.search);
+    } else {
+      apiKey = sessionStorage.getItem('polly_api_key');
+    }
+
+    renderAuthArea();
+  }
+
+  function renderAuthArea() {
+    if (apiKey) {
+      authArea.innerHTML = `
+        <div class="auth-status">
+          <div class="dot"></div>
+          Connected
+          <button class="disconnect-btn" id="disconnect-btn">Disconnect</button>
+        </div>`;
+      document.getElementById('disconnect-btn').addEventListener('click', disconnect);
+    } else {
+      authArea.innerHTML = `
+        <button class="auth-btn" id="connect-btn">🌸 Connect Pollen</button>`;
+      document.getElementById('connect-btn').addEventListener('click', authorize);
+    }
+  }
+
+  function authorize() {
+    const params = new URLSearchParams({ redirect_url: location.href });
+    window.location.href = `https://enter.pollinations.ai/authorize?${params}`;
+  }
+
+  function disconnect() {
+    apiKey = null;
+    sessionStorage.removeItem('polly_api_key');
+    renderAuthArea();
+  }
+
+  initAuth();
+
+  // ── Auto-resize textarea ──
+  inputEl.addEventListener('input', () => {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + 'px';
+  });
+
+  // ── Send on Enter (Shift+Enter = newline) ──
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  sendBtn.addEventListener('click', sendMessage);
+
+  document.getElementById('clear-btn').addEventListener('click', () => {
+    history = [];
+    messagesEl.innerHTML = '';
+    messagesEl.appendChild(emptyState);
+    emptyState.style.display = '';
+    hideError();
+  });
+
+  function showError(msg) {
+    errorToast.textContent = msg;
+    errorToast.classList.add('visible');
+  }
+
+  function hideError() {
+    errorToast.classList.remove('visible');
+  }
+
+  function appendMessage(role, text) {
+    emptyState.style.display = 'none';
+
+    const msg = document.createElement('div');
+    msg.className = `msg ${role}`;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.textContent = role === 'user' ? 'U' : '🌸';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+
+    msg.appendChild(avatar);
+    msg.appendChild(bubble);
+    messagesEl.appendChild(msg);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return bubble;
+  }
+
+  function appendTyping() {
+    emptyState.style.display = 'none';
+    const msg = document.createElement('div');
+    msg.className = 'msg assistant';
+    msg.id = 'typing-msg';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'avatar';
+    avatar.textContent = '🌸';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
+
+    msg.appendChild(avatar);
+    msg.appendChild(bubble);
+    messagesEl.appendChild(msg);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return msg;
+  }
+
+  async function sendMessage() {
+    const text = inputEl.value.trim();
+    if (!text) return;
+
+    hideError();
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    sendBtn.disabled = true;
+
+    // Add user message to history and UI
+    history.push({ role: 'user', content: text });
+    appendMessage('user', text);
+
+    const typingEl = appendTyping();
+
+    try {
+      const headers = { 'Content-Type': 'application/json' };
+      if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
+
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: modelSelect.value,
+          messages: history,   // Full history = coherent conversation
+        }),
+      });
+
+      // Remove typing indicator
+      typingEl.remove();
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error?.message || `HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      const reply = data?.choices?.[0]?.message?.content;
+
+      if (!reply) throw new Error('Empty response from API');
+
+      // Add assistant reply to history so next turn stays coherent
+      history.push({ role: 'assistant', content: reply });
+      appendMessage('assistant', reply);
+
+    } catch (err) {
+      typingEl.remove();
+      // Roll back the user message from history on failure
+      history.pop();
+      showError(`Error: ${err.message}`);
+    } finally {
+      sendBtn.disabled = false;
+      inputEl.focus();
+    }
+  }
+</script>
+</body>
+</html>
