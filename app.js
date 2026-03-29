@@ -20,7 +20,7 @@
 
     if (keyFromHash) {
       apiKey = keyFromHash;
-      sessionStorage.setItem('polly_api_key', apiKey);
+      sessionStorage.setItem('polly_api_key', apiKey); 
       // Clean the key out of the URL — don't leave it visible in the address bar
       window.history.replaceState(null, '', location.pathname + location.search);
     } else {
