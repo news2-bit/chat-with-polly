@@ -1,5 +1,5 @@
 
-  const API_URL = 'https://gen.pollinations.ai/v1/chat/completions';
+  const API_URL = 'https://gen.pollinations.ai/v1/chat/completions'; 
 
   let chatHistory = [];
   let apiKey = null;
